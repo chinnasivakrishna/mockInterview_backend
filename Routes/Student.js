@@ -13,7 +13,7 @@ router.post('/add', async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(Password, 10);
-    const query = `INSERT INTO student (name, email, password) VALUES (?, ?, ?)`;
+    const query = `INSERT INTO student (Name, email, password) VALUES (?, ?, ?)`;
 
     db.query(query, [Name, Email, hashedPassword], (err, result) => {
       if (err) {

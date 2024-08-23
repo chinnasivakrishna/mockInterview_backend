@@ -21,7 +21,6 @@ app.use("/api/student", student);
 app.use("/api/mentor", mentor);
 app.use('/api', mockInterviewRoutes);
 
-// JWT Middleware to protect routes
 const authenticateToken = (req, res, next) => {
   const token = req.headers['authorization'];
 
@@ -40,7 +39,6 @@ app.get('/', (req, res) => {
     });
 });
 
-// Example usage of the middleware
 app.get('/protected-route', authenticateToken, (req, res) => {
   res.send('This is a protected route');
 });
