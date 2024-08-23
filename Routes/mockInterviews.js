@@ -94,21 +94,65 @@ router.get('/requests/:mentorEmail', (req, res) => {
   });
 });
 
-// Endpoint to accept a mock interview request
 router.post('/accept-request', (req, res) => {
   const { id, mock_date, mock_time, mentor_email } = req.body;
-  console.log(mentor_email)
-  const query = `UPDATE mock_interviews SET  status = 'Accepted', mock_date = ?, mock_time = ?,mentor_email = ? WHERE id = ?`;
+
+  const query = `UPDATE mock_interviews SET status = 'Accepted', mock_date = ?, mock_time = ?, mentor_email = ? WHERE id = ?`;
   
   db.query(query, [mock_date, mock_time, mentor_email, id], (err, result) => {
     if (err) {
       console.error('Error updating request:', err);
       res.status(500).json({ error: 'Failed to accept request' });
     } else {
-      res.json({ message: 'Request accepted successfully' });
+      // Fetch the student's email associated with this mock interview ID
+      const fetchStudentQuery = `SELECT email FROM mock_interviews WHERE id = ?`;
+      db.query(fetchStudentQuery, [id], (err, results) => {
+        if (err) {
+          console.error('Error fetching student email:', err);
+          return res.status(500).json({ error: 'Failed to fetch student email' });
+        }
+
+        if (results.length > 0) {
+          const studentEmail = results[0].email;
+
+          // Configure nodemailer to send email
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+            tls: {
+              rejectUnauthorized: false, // Allows self-signed certificates
+            },
+          });
+
+          const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: studentEmail,
+            subject: 'Mock Interview Scheduled',
+            text: `Your mock interview has been scheduled by the mentor. 
+            Date: ${mock_date}, Time: ${mock_time}.
+            Please be prepared and join on time. Good luck!`,
+          };
+
+          // Send email to the student
+          transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+              console.error("Error sending email:", error);
+            } else {
+              console.log(`Email sent to student (${studentEmail}): ${info.response}`);
+            }
+          });
+        }
+
+        // Respond to the mentor
+        res.json({ message: 'Request accepted successfully and email sent to the student' });
+      });
     }
   });
 });
+
 
 // Endpoint to reject a mock interview request
 router.post('/reject-request', (req, res) => {
