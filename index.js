@@ -34,6 +34,12 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+app.get('/', (req, res) => {
+    res.json({
+        message: 'The API is working!'
+    });
+});
+
 // Example usage of the middleware
 app.get('/protected-route', authenticateToken, (req, res) => {
   res.send('This is a protected route');
