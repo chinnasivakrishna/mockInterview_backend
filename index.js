@@ -4,7 +4,11 @@ const express = require("express");
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ["https://mock-interview-frontend.vercel.app"],
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials:true
+}));
 app.use(express.json());
 
 const student = require("./Routes/Student");
