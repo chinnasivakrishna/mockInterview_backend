@@ -3,11 +3,9 @@ const router = express.Router();
 const db = require('../db');
 const nodemailer = require('nodemailer');
 
-// POST /api/mock-interviews
 router.post('/mock-interviews', async (req, res) => {
   const { email, duration, topics, dates, cost, status } = req.body;
 
-  // Insert mock interview details into the database
   const insertQuery = `
     INSERT INTO mock_interviews (email, duration, topics, dates, cost, status)
     VALUES (?, ?, ?, ?, ?, ?)
@@ -19,7 +17,6 @@ router.post('/mock-interviews', async (req, res) => {
       return res.status(500).json({ message: "Failed to schedule mock interview" });
     }
 
-    // Fetch mentors who match the requested topics
     const topicsString = topics.map(topic => `roles LIKE '%${topic}%'`).join(' OR ');
     const mentorQuery = `SELECT * FROM mentor WHERE ${topicsString}`;
 
@@ -33,7 +30,6 @@ router.post('/mock-interviews', async (req, res) => {
         return res.status(404).json({ message: "No mentors available for the selected topics" });
       }
 
-      // Send email to each matched mentor
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -41,7 +37,7 @@ router.post('/mock-interviews', async (req, res) => {
           pass: process.env.EMAIL_PASS,
         },
         tls: {
-          rejectUnauthorized: false, // Allows self-signed certificates
+          rejectUnauthorized: false, 
         },
       });
 
@@ -67,7 +63,6 @@ router.post('/mock-interviews', async (req, res) => {
   });
 });
 
-// Backend - Update the GET requests endpoint to include the student name
 router.get('/requests/:mentorEmail', (req, res) => {
   const mentorEmail = req.params.mentorEmail;
 
@@ -104,7 +99,6 @@ router.post('/accept-request', (req, res) => {
       console.error('Error updating request:', err);
       res.status(500).json({ error: 'Failed to accept request' });
     } else {
-      // Fetch the student's email associated with this mock interview ID
       const fetchStudentQuery = `SELECT email FROM mock_interviews WHERE id = ?`;
       db.query(fetchStudentQuery, [id], (err, results) => {
         if (err) {
@@ -115,7 +109,6 @@ router.post('/accept-request', (req, res) => {
         if (results.length > 0) {
           const studentEmail = results[0].email;
 
-          // Configure nodemailer to send email
           const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -123,7 +116,7 @@ router.post('/accept-request', (req, res) => {
               pass: process.env.EMAIL_PASS,
             },
             tls: {
-              rejectUnauthorized: false, // Allows self-signed certificates
+              rejectUnauthorized: false, 
             },
           });
 
@@ -136,7 +129,6 @@ router.post('/accept-request', (req, res) => {
             Please be prepared and join on time. Good luck!`,
           };
 
-          // Send email to the student
           transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
               console.error("Error sending email:", error);
@@ -146,7 +138,6 @@ router.post('/accept-request', (req, res) => {
           });
         }
 
-        // Respond to the mentor
         res.json({ message: 'Request accepted successfully and email sent to the student' });
       });
     }
@@ -154,7 +145,6 @@ router.post('/accept-request', (req, res) => {
 });
 
 
-// Endpoint to reject a mock interview request
 router.post('/reject-request', (req, res) => {
   const { id } = req.body;
   const query = `UPDATE mock_interviews SET status = 'Rejected' WHERE id = ?`;
@@ -173,7 +163,6 @@ router.post('/reject-request', (req, res) => {
 router.get('/students/:email', (req, res) => {
   const { email } = req.params;
 
-  // Query to get mock interviews with mentor details
   const query = `
     SELECT 
       mi.id,
@@ -218,7 +207,6 @@ router.put('/:id', (req, res) => {
   });
 });
 
-// Endpoint to get mock interviews by mentor email
 router.get('/:email', (req, res) => {
   const email = req.params.email;
   const query = `
@@ -235,7 +223,6 @@ router.get('/:email', (req, res) => {
   });
 });
 
-// Endpoint to update student score
 router.put('/mentor/:id', (req, res) => {
   const id = req.params.id;
   const { student_score } = req.body;

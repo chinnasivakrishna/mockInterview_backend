@@ -4,10 +4,8 @@ const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
-// Secret key for JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
-// POST /api/student/add
 router.post('/add', async (req, res) => {
   const { Name, Email, Password } = req.body;
 
@@ -50,10 +48,8 @@ router.post('/login', async (req, res) => {
         return res.status(401).json({ message: "Invalid email or password" });
       }
 
-      // Generate JWT Token
       const token = jwt.sign({ email: student.email }, JWT_SECRET, { expiresIn: '1h' });
 
-      // If login is successful
       return res.status(200).json({ message: "Login successful", student, token });
     });
   } catch (error) {
