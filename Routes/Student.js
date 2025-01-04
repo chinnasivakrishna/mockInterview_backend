@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db');
+const Student = require('../models/Student');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
@@ -11,15 +11,14 @@ router.post('/add', async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(Password, 10);
-    const query = `INSERT INTO student (Name, email, password) VALUES (?, ?, ?)`;
-
-    db.query(query, [Name, Email, hashedPassword], (err, result) => {
-      if (err) {
-        console.error("Failed to insert student:", err);
-        return res.status(500).json({ message: "Registration failed" });
-      }
-      return res.status(201).json({ message: "Student added successfully" });
+    const student = new Student({
+      Name,
+      email: Email,
+      password: hashedPassword
     });
+    await student.save();
+
+    return res.status(201).json({ message: "Student added successfully" });
   } catch (error) {
     console.error("Error during registration:", error);
     return res.status(500).json({ message: "Registration failed" });
@@ -30,75 +29,66 @@ router.post('/login', async (req, res) => {
   const { Email, Password } = req.body;
 
   try {
-    const query = `SELECT * FROM student WHERE email = ?`;
-    db.query(query, [Email], async (err, result) => {
-      if (err) {
-        console.error("Error during login:", err);
-        return res.status(500).json({ message: "Login failed" });
-      }
+    const student = await Student.findOne({ email: Email });
 
-      if (result.length === 0) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
+    if (!student) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
 
-      const student = result[0];
-      const isMatch = await bcrypt.compare(Password, student.password);
+    const isMatch = await bcrypt.compare(Password, student.password);
 
-      if (!isMatch) {
-        return res.status(401).json({ message: "Invalid email or password" });
-      }
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
 
-      const token = jwt.sign({ email: student.email }, JWT_SECRET, { expiresIn: '1h' });
+    const token = jwt.sign({ email: student.email }, JWT_SECRET, { expiresIn: '1h' });
 
-      return res.status(200).json({ message: "Login successful", student, token });
-    });
+    return res.status(200).json({ message: "Login successful", student, token });
   } catch (error) {
     console.error("Error during login:", error);
     return res.status(500).json({ message: "Login failed" });
   }
 });
 
-
-
-
-router.post('/update-premium', (req, res) => {
+router.post('/update-premium', async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email is required' });
   }
 
-  const query = 'UPDATE student SET ispremium = 1 WHERE email = ?';
-  
-  db.query(query, [email], (err, result) => {
-    if (err) {
-      console.error('Error updating premium status:', err);
-      return res.status(500).json({ error: 'Failed to update premium status' });
-    }
+  try {
+    const result = await Student.updateOne(
+      { email },
+      { $set: { ispremium: true }}
+    );
 
-    if (result.affectedRows === 0) {
+    if (result.nModified === 0) {
       return res.status(404).json({ error: 'Student not found' });
     }
 
-    res.json({ message: 'Premium status updated successfully' });
-  });
+    return res.json({ message: 'Premium status updated successfully' });
+  } catch (error) {
+    console.error('Error updating premium status:', error);
+    return res.status(500).json({ error: 'Failed to update premium status' });
+  }
 });
 
-router.get('/:email', (req, res) => {
+router.get('/:email', async (req, res) => {
   const email = req.params.email;
-  const query = 'SELECT * FROM student WHERE email = ?';
-  
-  db.query(query, [email], (err, results) => {
-    if (err) {
-      console.error('Error fetching student:', err);
-      return res.status(500).json({ error: 'Internal server error' });
+
+  try {
+    const student = await Student.findOne({ email });
+
+    if (!student) {
+      return res.status(404).json({ message: 'Student not found' });
     }
-    
-    if (results.length > 0) {
-      res.json(results[0]);
-    } else {
-      res.status(404).json({ message: 'Student not found' });
-    }
-  });
+
+    return res.json(student);
+  } catch (error) {
+    console.error('Error fetching student:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
 });
+
 module.exports = router;

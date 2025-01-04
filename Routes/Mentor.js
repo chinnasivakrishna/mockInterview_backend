@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Mentor = require('../models/Mentor');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 

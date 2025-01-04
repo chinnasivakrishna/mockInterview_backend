@@ -2,65 +2,28 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const nodemailer = require('nodemailer');
+const MockInterview = require('../models/MockInterview');
+const Mentor = require('../models/Mentor');
+const Student = require('../models/Student');
 
 router.post('/mock-interviews', async (req, res) => {
   const { email, duration, topics, dates, cost, status } = req.body;
 
-  const insertQuery = `
-    INSERT INTO mock_interviews (email, duration, topics, dates, cost, status)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(insertQuery, [email, duration, JSON.stringify(topics), JSON.stringify(dates), cost, status], (err, result) => {
-    if (err) {
-      console.error("Error inserting mock interview:", err);
-      return res.status(500).json({ message: "Failed to schedule mock interview" });
-    }
-
-    const topicsString = topics.map(topic => `roles LIKE '%${topic}%'`).join(' OR ');
-    const mentorQuery = `SELECT * FROM mentor WHERE ${topicsString}`;
-
-    db.query(mentorQuery, (err, mentors) => {
-      if (err) {
-        console.error("Error fetching mentors:", err);
-        return res.status(500).json({ message: "Failed to fetch mentors" });
-      }
-
-      if (mentors.length === 0) {
-        return res.status(404).json({ message: "No mentors available for the selected topics" });
-      }
-
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-        tls: {
-          rejectUnauthorized: false, 
-        },
-      });
-
-      mentors.forEach((mentor) => {
-        const mailOptions = {
-          from: process.env.EMAIL_USER,
-          to: mentor.email,
-          subject: `Mock Interview Request from ${email}`,
-          text: `A student has requested a mock interview on the following topics: ${topics.join(', ')}. Available dates are: ${dates.join(', ')}. Duration: ${duration} minutes. Please respond to this request.`,
-        };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error("Error sending email:", error);
-          } else {
-            console.log(`Email sent to ${mentor.email}: ${info.response}`);
-          }
-        });
-      });
-
-      res.status(201).json({ message: "Mock interview scheduled and requests sent to mentors" });
-    });
+  const mockInterview = new MockInterview({
+    email,
+    duration,
+    topics,
+    dates,
+    cost,
+    status
   });
+  await mockInterview.save();
+
+  const mentors = await Mentor.find({
+    roles: { $in: topics }
+  });
+
+  res.status(201).json({ message: "Mock interview scheduled and requests sent to mentors" });
 });
 
 router.get('/requests/:mentorEmail', (req, res) => {
